@@ -334,7 +334,7 @@ createApp({
       const ex = selectableExamples.value.find(e => e.name === name);
       if (!ex) return;
       // Ensure content ends with the delim character
-      const content = ex.content.endsWith(ex.delim) ? ex.content : ex.content + ex.delim;
+      const content = ex.content.endsWith("|") ? ex.content : `${ex.content}|`
       suppressCustomSwitch = true;
       mapInput.value = content;
       // Use setTimeout(0) to clear the flag after Vue's synchronous reactive flush
