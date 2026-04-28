@@ -466,10 +466,11 @@ createApp({
     };
 
     const clearAll = () => {
-      mapInput.value     = '';
-      resultMap.value    = '';
-      resultStatus.value = null;
-      apiError.value     = '';
+      mapInput.value        = '';
+      resultMap.value       = '';
+      resultStatus.value    = null;
+      selectedExample.value = '__custom__';
+      apiError.value        = '';
     };
 
     return {
