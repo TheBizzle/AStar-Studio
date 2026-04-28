@@ -27,7 +27,12 @@ func rootHandler(res http.ResponseWriter, req *http.Request) {
 }
 
 func exampleMapsHandler(res http.ResponseWriter, req *http.Request) {
-	defer req.Body.Close()
+	defer func() {
+		if err := req.Body.Close(); err != nil {
+			log.Printf("Error closing request body: %v", err)
+		}
+	}()
+
 	if req.Method == http.MethodGet {
 		var sendables []SendableTest
 		for i, test := range testset.Tests {
@@ -44,7 +49,12 @@ func exampleMapsHandler(res http.ResponseWriter, req *http.Request) {
 }
 
 func pathfindingHandler(res http.ResponseWriter, req *http.Request) {
-	defer req.Body.Close()
+	defer func() {
+		if err := req.Body.Close(); err != nil {
+			log.Printf("Error closing request body: %v", err)
+		}
+	}()
+
 	if req.Method == http.MethodPost {
 		const oneMB = 1 << 20
 		body, err := io.ReadAll(http.MaxBytesReader(res, req.Body, oneMB))
@@ -52,11 +62,17 @@ func pathfindingHandler(res http.ResponseWriter, req *http.Request) {
 			http.Error(res, "Error reading body", http.StatusInternalServerError)
 			return
 		}
+
 		wasSuccessful, pmapStr, timingStrs := runner.RunAStars(string(body))
+		var writeErr error
 		if wasSuccessful {
-			fmt.Fprintf(res, "%d,%v,%v", 0, strings.Join(timingStrs, "&"), pmapStr)
+			_, writeErr = fmt.Fprintf(res, "%d,%v,%v", 0, strings.Join(timingStrs, "&"), pmapStr)
 		} else {
-			fmt.Fprintf(res, "%d,%v", 1, pmapStr)
+			_, writeErr = fmt.Fprintf(res, "%d,%v", 1, pmapStr)
+		}
+
+		if writeErr != nil {
+			log.Printf("Error when writing response: %v", writeErr)
 		}
 	} else {
 		http.Error(res, "Method not allowed", http.StatusMethodNotAllowed)
