@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -8,7 +9,14 @@ import (
 	"strings"
 
 	runner "github.com/TheBizzle/AStar-Studio/internal/runner"
+	testset "github.com/TheBizzle/PathFindingCore-Golang/testset"
 )
+
+type SendableTest struct {
+	Name    string `json:"name"`
+	Delim   string `json:"delim"`
+	Content string `json:"content"`
+}
 
 func rootHandler(res http.ResponseWriter, req *http.Request) {
 	if req.URL.Path != "/" {
@@ -16,6 +24,23 @@ func rootHandler(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	http.ServeFile(res, req, "index.html")
+}
+
+func exampleMapsHandler(res http.ResponseWriter, req *http.Request) {
+	defer req.Body.Close()
+	if req.Method == http.MethodGet {
+		var sendables []SendableTest
+		for i, test := range testset.Tests {
+			name := fmt.Sprintf("Example #%d", i+1)
+			sendable := SendableTest{Name: name, Delim: test.MapStr.Delim, Content: test.MapStr.Contents}
+			sendables = append(sendables, sendable)
+		}
+		if err := json.NewEncoder(res).Encode(sendables); err != nil {
+			http.Error(res, "Error encoding response", http.StatusInternalServerError)
+		}
+	} else {
+		http.Error(res, "Method not allowed", http.StatusMethodNotAllowed)
+	}
 }
 
 func pathfindingHandler(res http.ResponseWriter, req *http.Request) {
@@ -40,6 +65,7 @@ func pathfindingHandler(res http.ResponseWriter, req *http.Request) {
 
 func main() {
 	http.HandleFunc("/", rootHandler)
+	http.HandleFunc("/example-maps", exampleMapsHandler)
 	http.HandleFunc("/find-me-a-path", pathfindingHandler)
 
 	portNum := 8080

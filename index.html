@@ -161,6 +161,28 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
+  .example-select {
+    font-family: 'Lora', serif;
+    font-size: .9rem;
+    padding: .52rem .9rem;
+    border-radius: 4px;
+    border: 1.5px solid var(--border);
+    background: var(--warm);
+    color: var(--ink);
+    cursor: pointer;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+    min-width: 200px;
+  }
+  .example-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(176,90,42,.12); }
+  .example-select:disabled { opacity: .5; cursor: not-allowed; }
+  .example-label {
+    font-family: 'DM Mono', monospace;
+    font-size: .78rem;
+    color: var(--ink-mid);
+    white-space: nowrap;
+  }
+
   .error-bar {
     font-family: 'DM Mono', monospace;
     font-size: .82rem;
@@ -207,6 +229,26 @@
     </button>
     <button class="btn btn-secondary" @click="clearAll">Clear</button>
     <span v-if="apiError" class="error-bar">⚠ {{ apiError }}</span>
+
+    <select
+      class="example-select"
+      :disabled="examplesLoading"
+      :value="selectedExample"
+      @change="onExampleChange"
+    >
+      <option value="__custom__">&lt;Custom&gt;</option>
+      <template v-if="examplesLoading">
+        <option disabled>Loading…</option>
+      </template>
+      <template v-else>
+        <option
+          v-for="ex in selectableExamples"
+          :key="ex.name"
+          :value="ex.name"
+        >{{ ex.name }}</option>
+      </template>
+    </select>
+
   </div>
 
   <main>
@@ -218,7 +260,8 @@
         class="map-textarea"
         :class="mapInputClass"
         v-model="mapInput"
-        placeholder="Paste your ASCII map here.&#10;Each row must end with | followed by a newline.&#10;&#10;Example:&#10;&#10;&nbsp;%&nbsp;&nbsp;*|&#10;OG%&nbsp;%|&#10;%&nbsp;&nbsp;&nbsp;&nbsp;|"
+        @input="onMapInput"
+        placeholder="Paste your ASCII map here or select one from the chooser above.&#10;Each row must end with | followed by a newline.&#10;&#10;Example:&#10;&#10;&nbsp;%&nbsp;&nbsp;*|&#10;OG%&nbsp;%|&#10;%&nbsp;&nbsp;&nbsp;&nbsp;|"
         spellcheck="false"
       ></textarea>
       <span class="validation-msg" :class="validationMsgClass">{{ validationMessage }}</span>
@@ -253,7 +296,7 @@
 </div>
 
 <script>
-const { createApp, ref, computed } = Vue;
+const { createApp, ref, computed, onMounted } = Vue;
 
 createApp({
   setup() {
@@ -263,7 +306,51 @@ createApp({
     const loading      = ref(false);
     const apiError     = ref('');
 
+    // ── Example maps ─────────────────────────────────────────────
+    const examples        = ref([]);   // raw array from API: { delim, content, name }[]
+    const examplesLoading = ref(true);
+    const selectedExample = ref('__custom__');
+
+    // Only expose items whose delim is '|'
+    const selectableExamples = computed(() => examples.value.filter(e => e.delim === "|\n"));
+
+    onMounted(async () => {
+      try {
+        const res = await fetch("/example-maps");
+        if (res.ok) {
+          examples.value = await res.json();
+        }
+      } catch (_) {
+        console.error("Failed to obtain example maps");
+      } finally {
+        examplesLoading.value = false;
+      }
+    });
+
+    const onExampleChange = (evt) => {
+      const name = evt.target.value;
+      selectedExample.value = name;
+      if (name === '__custom__') return;
+      const ex = selectableExamples.value.find(e => e.name === name);
+      if (!ex) return;
+      // Ensure content ends with the delim character
+      const content = ex.content.endsWith(ex.delim) ? ex.content : ex.content + ex.delim;
+      suppressCustomSwitch = true;
+      mapInput.value = content;
+      // Use setTimeout(0) to clear the flag after Vue's synchronous reactive flush
+      setTimeout(() => { suppressCustomSwitch = false; }, 0);
+      // Clear previous results when a new example is loaded
+      resultMap.value    = '';
+      resultStatus.value = null;
+      apiError.value     = '';
+    };
+
     // ── Validation ───────────────────────────────────────────────
+    // Track whether the last mapInput change came from a dropdown selection.
+    // We do this by flagging it inside onExampleChange, then clearing the flag
+    // after the reactive update settles.
+    let suppressCustomSwitch = false;
+
     const validationResult = computed(() => {
       const raw = mapInput.value;
       if (!raw.trim()) return { valid: false, empty: true, message: 'No map entered.' };
@@ -313,6 +400,12 @@ createApp({
     const validationMessage = computed(() => validationResult.value.message);
 
     const isMapValid = computed(() => validationResult.value.valid);
+
+    const onMapInput = () => {
+      if (!suppressCustomSwitch) {
+        selectedExample.value = '__custom__';
+      }
+    };
 
     // ── Heuristic label ──────────────────────────────────────────
     const heuristicLabel = (index) => ['Euclidean distance', 'Manhattan distance', 'Heuristic-free'][index];
@@ -384,6 +477,8 @@ createApp({
       loading, apiError,
       isMapValid, mapInputClass, validationMsgClass, validationMessage,
       submitMap, clearAll, heuristicLabel,
+      examples, examplesLoading, selectedExample, selectableExamples,
+      onExampleChange, onMapInput,
     };
   }
 }).mount('#app');
