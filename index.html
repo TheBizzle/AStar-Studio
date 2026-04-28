@@ -242,9 +242,10 @@
       </template>
       <template v-else>
         <option
-          v-for="ex in selectableExamples"
-          :key="ex.name"
-          :value="ex.name"
+          v-for="ex in examples"
+            :key="ex.name"
+            :value="ex.name"
+            :disabled="ex.delim !== '|\n'"
         >{{ ex.name }}</option>
       </template>
     </select>
@@ -311,9 +312,6 @@ createApp({
     const examplesLoading = ref(true);
     const selectedExample = ref('__custom__');
 
-    // Only expose items whose delim is '|'
-    const selectableExamples = computed(() => examples.value.filter(e => e.delim === "|\n"));
-
     onMounted(async () => {
       try {
         const res = await fetch("/example-maps");
@@ -331,7 +329,7 @@ createApp({
       const name = evt.target.value;
       selectedExample.value = name;
       if (name === '__custom__') return;
-      const ex = selectableExamples.value.find(e => e.name === name);
+      const ex = examples.value.find(e => e.name === name);
       if (!ex) return;
       // Ensure content ends with the delim character
       const content = ex.content.endsWith("|") ? ex.content : `${ex.content}|`
@@ -478,7 +476,7 @@ createApp({
       loading, apiError,
       isMapValid, mapInputClass, validationMsgClass, validationMessage,
       submitMap, clearAll, heuristicLabel,
-      examples, examplesLoading, selectedExample, selectableExamples,
+      examples, examplesLoading, selectedExample,
       onExampleChange, onMapInput,
     };
   }
