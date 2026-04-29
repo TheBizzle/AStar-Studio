@@ -42,6 +42,9 @@ func RunAStars(asciiMap string) (bool, string, []string) {
 			wg.Add(1)
 			go func(h heur.Heuristic, i int) {
 				defer wg.Done()
+				defer func() {
+					_ = recover()
+				}()
 
 				start := time.Now()
 				runResult, stepData := astar.Run(pms, h)
