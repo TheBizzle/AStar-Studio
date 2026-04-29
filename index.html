@@ -96,6 +96,7 @@
     display: inline-flex;
     align-items: center;
     gap: .4rem;
+    resize: none;
   }
   .validation-msg.ok      { background: #edf7ef; color: var(--ok);      }
   .validation-msg.err     { background: #fdf0f0; color: var(--err);     }
@@ -265,7 +266,7 @@
         placeholder="Paste your ASCII map here or select one from the chooser above.&#10;Each row must end with | followed by a newline.&#10;&#10;Example:&#10;&#10;&nbsp;%&nbsp;&nbsp;*|&#10;OG%&nbsp;%|&#10;%&nbsp;&nbsp;&nbsp;&nbsp;|"
         spellcheck="false"
       ></textarea>
-      <span class="validation-msg" :class="validationMsgClass">{{ validationMessage }}</span>
+      <textarea class="validation-msg" :class="validationMsgClass" readonly>{{ validationMessage }}</textarea>
     </div>
 
     <!-- Result -->
@@ -352,6 +353,15 @@ createApp({
     const validationResult = computed(() => {
       const raw = mapInput.value;
       if (!raw.trim()) return { valid: false, empty: true, message: 'No map entered.' };
+
+      const goodies   = ["a", " ", "f", "G", "O", "x", ".", "*", "D", "%", "|", "\n"];
+      const goodChars = new Set(goodies);
+      for (const char of raw) {
+        if (!goodChars.has(char)) {
+          const goodiesStr = JSON.stringify(goodies);
+          return { valid: false, empty: false, message: `Only these characters are allowed:\n${goodiesStr}` }
+        }
+      }
 
       // Split on newlines; allow a single trailing newline (strip the resulting empty final element).
       const lines = raw.split('\n');
