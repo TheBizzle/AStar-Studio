@@ -6,6 +6,7 @@ package runner
 import (
 	"fmt"
 	"math"
+	"strings"
 	"sync"
 	"time"
 
@@ -28,7 +29,8 @@ type candidate struct {
 var heuristics = []heur.Heuristic{heur.Euclidean, heur.Manhattan, heur.Dijkstra}
 
 func RunAStars(asciiMap string) (bool, string, []string) {
-	pms := core.PathingMapString{Contents: asciiMap, Delim: "|\n"}
+	purifiedASCII := strings.ReplaceAll(asciiMap, "\n", "")
+	pms := core.PathingMapString{Contents: purifiedASCII, Delim: "|"}
 
 	numAttempts := 1000
 	results := make([]Result, len(heuristics)*numAttempts)
