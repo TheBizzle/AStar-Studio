@@ -272,8 +272,8 @@
     <!-- Result -->
     <div class="panel">
       <span class="panel-label">Result Map</span>
-      <span class="panel-label">Partial Legend: . is a query; x is the path to the goal</span>
-      <div class="result-map" :class="{ empty: !resultMap }">{{ resultMap || 'The annotated map will appear here after running.' }}</div>
+      <span class="panel-label">Partial Legend - 🐝: Self; 🏁: Goal; 👣: Path to goal; ❓: Queried tile; ⬜: Unqueried tile</span>
+      <div class="result-map" :class="{ empty: !resultMap }">{{ resultMap || 'The filled map will appear here after running.' }}</div>
     </div>
   </main>
 
@@ -302,8 +302,9 @@ const { createApp, ref, computed, onMounted } = Vue;
 
 createApp({
   setup() {
+    const _resultMap   = ref('');
+
     const mapInput     = ref('');
-    const resultMap    = ref('');
     const resultStatus = ref(null); // null | { succeeded: bool, winningHeuristic: string|null, timings: Array<number>|null }
     const loading      = ref(false);
     const apiError     = ref('');
@@ -408,6 +409,28 @@ createApp({
     const validationMessage = computed(() => validationResult.value.message);
 
     const isMapValid = computed(() => validationResult.value.valid);
+
+    const resultMap = computed({
+      get() {
+        return _resultMap.value
+      },
+      set(value) {
+        _resultMap.value =
+          value.replaceAll("a", "🐜")  // Ant
+               .replaceAll(" ", "⬜")  // Empty
+               .replaceAll("f", "🍬")  // Food
+               .replaceAll("G", "🏁")  // Goal
+               .replaceAll("O", "🪺")  // Mound
+               .replaceAll("x", "👣")  // Path
+               .replaceAll(".", "❓")  // Query
+               .replaceAll("*", "🐝")  // Self
+               .replaceAll("D", "🪨")  // Wall
+               .replaceAll("%", "💧")  // Water
+               .replaceAll("+", "🧱")  // CornerBoundary
+               .replaceAll("-", "🧱")  // HorizontalBoundary
+               .replaceAll("|", "🧱"); // VerticalBoundary
+      }
+    });
 
     const onMapInput = () => {
       if (!suppressCustomSwitch) {
